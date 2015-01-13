@@ -1,16 +1,30 @@
-# Loads RDS
-require(ggplot2)
+## This first line will likely take a few seconds. Be patient!
+if(!exists("NEI")){
+  NEI <- readRDS("./data/summarySCC_PM25.rds")
+}
+if(!exists("SCC")){
+  SCC <- readRDS("./data/Source_Classification_Code.rds")
+}
 
-NEI <- readRDS("data/summarySCC_PM25.rds")
-SCC <- readRDS("data/Source_Classification_Code.rds")
+library(ggplot2)
 
-# Samples data for testing
-NEIsample <- NEI[sample(nrow(NEI), size = 5000, replace = F), ]
+# Of the four types of sources indicated by the type (point, nonpoint, onroad, nonroad) variable, 
+# which of these four sources have seen decreases in emissions from 1999 2008 for Baltimore City? 
+# Which have seen increases in emissions from 1999 2008? 
+# Use the ggplot2 plotting system to make a plot answer this question.
 
-# Baltimore City, Maryland == fips
-MD <- subset(NEI, fips == 24510)
-MD$year <- factor(MD$year, levels = c('1999', '2002', '2005', '2008'))
+# 24510 is Baltimore, see plot2.R
+subsetNEI  <- NEI[NEI$fips=="24510", ]
 
-png('plot3.png', width = 800, height = 500, units = 'px')
-ggplot(data = MD, aes(x = year, y = log(Emissions))) + facet_grid(. ~ type) + guides(fill = F) + geom_boxplot(aes(fill = type)) + stat_boxplot(geom = 'errorbar') + ylab(expression(paste('Log', ' of PM'[2.5], ' Emissions'))) + xlab('Year') + ggtitle('Emissions per Type in Baltimore City, Maryland') + geom_jitter(alpha = 0.10)
+aggregatedTotalByYearAndType <- aggregate(Emissions ~ year + type, subsetNEI, sum)
+
+
+
+png("plot3.png", width=640, height=480)
+g <- ggplot(aggregatedTotalByYearAndType, aes(year, Emissions, color = type))
+g <- g + geom_line() +
+  xlab("year") +
+  ylab(expression('Total PM'[2.5]*" Emissions")) +
+  ggtitle('Total Emissions in Baltimore City, Maryland (fips == "24510") from 1999 to 2008')
+print(g)
 dev.off()

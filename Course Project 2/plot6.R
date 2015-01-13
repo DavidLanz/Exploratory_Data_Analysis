@@ -1,26 +1,36 @@
-# Loads RDS
+## This first line will likely take a few seconds. Be patient!
+if(!exists("NEI")){
+  NEI <- readRDS("./data/summarySCC_PM25.rds")
+}
+if(!exists("SCC")){
+  SCC <- readRDS("./data/Source_Classification_Code.rds")
+}
+# merge the two data sets 
+if(!exists("NEISCC")){
+  NEISCC <- merge(NEI, SCC, by="SCC")
+}
+
 library(ggplot2)
 
-NEI <- readRDS("data/summarySCC_PM25.rds")
-NEI$year <- factor(NEI$year, levels = c('1999', '2002', '2005', '2008'))
-SCC <- readRDS("data/Source_Classification_Code.rds")
+# Compare emissions from motor vehicle sources in Baltimore City with emissions from motor 
+# vehicle sources in Los Angeles County, California (fips == "06037"). 
+# Which city has seen greater changes over time in motor vehicle emissions?
 
-# Baltimore City, Maryland
-# Los Angeles County, California
-MD.onroad <- subset(NEI, fips == '24510' & type == 'ON-ROAD')
-CA.onroad <- subset(NEI, fips == '06037' & type == 'ON-ROAD')
+# 24510 is Baltimore, see plot2.R, 06037 is LA CA
+# Searching for ON-ROAD type in NEI
+# Don't actually know it this is the intention, but searching for 'motor' in SCC only gave a subset (non-cars)
+subsetNEI <- NEI[(NEI$fips=="24510"|NEI$fips=="06037") & NEI$type=="ON-ROAD",  ]
 
-# Aggregates
-MD.DF <- aggregate(MD.onroad[, 'Emissions'], by = list(MD.onroad$year), sum)
-colnames(MD.DF) <- c('year', 'Emissions')
-MD.DF$City <- paste(rep('MD', 4))
+aggregatedTotalByYearAndFips <- aggregate(Emissions ~ year + fips, subsetNEI, sum)
+aggregatedTotalByYearAndFips$fips[aggregatedTotalByYearAndFips$fips=="24510"] <- "Baltimore, MD"
+aggregatedTotalByYearAndFips$fips[aggregatedTotalByYearAndFips$fips=="06037"] <- "Los Angeles, CA"
 
-CA.DF <- aggregate(CA.onroad[, 'Emissions'], by = list(CA.onroad$year), sum)
-colnames(CA.DF) <- c('year', 'Emissions')
-CA.DF$City <- paste(rep('CA', 4))
-
-DF <- as.data.frame(rbind(MD.DF, CA.DF))
-
-png('plot6.png')
-ggplot(data = DF, aes(x = year, y = Emissions)) + geom_bar(aes(fill = year),stat = "identity") + guides(fill = F) + ggtitle('Total Emissions of Motor Vehicle Sources\nLos Angeles County, California vs. Baltimore City, Maryland') + ylab(expression('PM'[2.5])) + xlab('Year') + theme(legend.position = 'none') + facet_grid(. ~ City) + geom_text(aes(label = round(Emissions, 0), size = 1, hjust = 0.5, vjust = -1))
+png("plot6.png", width=1040, height=480)
+g <- ggplot(aggregatedTotalByYearAndFips, aes(factor(year), Emissions))
+g <- g + facet_grid(. ~ fips)
+g <- g + geom_bar(stat="identity")  +
+  xlab("year") +
+  ylab(expression('Total PM'[2.5]*" Emissions")) +
+  ggtitle('Total Emissions from motor vehicle (type=ON-ROAD) in Baltimore City, MD (fips = "24510") vs Los Angeles, CA (fips = "06037")  1999-2008')
+print(g)
 dev.off()

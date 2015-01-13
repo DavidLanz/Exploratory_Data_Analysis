@@ -1,17 +1,33 @@
-# Loads RDS
+## This first line will likely take a few seconds. Be patient!
+if(!exists("NEI")){
+  NEI <- readRDS("./data/summarySCC_PM25.rds")
+}
+if(!exists("SCC")){
+  SCC <- readRDS("./data/Source_Classification_Code.rds")
+}
+# merge the two data sets 
+if(!exists("NEISCC")){
+  NEISCC <- merge(NEI, SCC, by="SCC")
+}
+
 library(ggplot2)
 
-NEI <- readRDS("data/summarySCC_PM25.rds")
-NEI$year <- factor(NEI$year, levels = c('1999', '2002', '2005', '2008'))
-SCC <- readRDS("data/Source_Classification_Code.rds")
+# How have emissions from motor vehicle sources changed from 1999-2008 in Baltimore City?
 
-# Baltimore City, Maryland == fips
-MD.onroad <- subset(NEI, fips == 24510 & type == 'ON-ROAD')
+# 24510 is Baltimore, see plot2.R
+# Searching for ON-ROAD type in NEI
+# Don't actually know it this is the intention, but searching for 'motor' in SCC only gave a subset (non-cars)
+subsetNEI <- NEI[NEI$fips=="24510" & NEI$type=="ON-ROAD",  ]
 
-# Aggregates
-MD.df <- aggregate(MD.onroad[, 'Emissions'], by = list(MD.onroad$year), sum)
-colnames(MD.df) <- c('year', 'Emissions')
+aggregatedTotalByYear <- aggregate(Emissions ~ year, subsetNEI, sum)
 
-png('plot5.png')
-ggplot(data = MD.df, aes(x = year, y = Emissions)) + geom_bar(aes(fill = year), stat = "identity") + guides(fill = F) + ggtitle('Total Emissions of Motor Vehicle Sources in Baltimore City, Maryland') + ylab(expression('PM'[2.5])) + xlab('Year') + theme(legend.position = 'none') + geom_text(aes(label = round(Emissions, 0), size = 1, hjust = 0.5, vjust = 2))
+
+
+png("plot5.png", width=840, height=480)
+g <- ggplot(aggregatedTotalByYear, aes(factor(year), Emissions))
+g <- g + geom_bar(stat="identity") +
+  xlab("year") +
+  ylab(expression('Total PM'[2.5]*" Emissions")) +
+  ggtitle('Total Emissions from motor vehicle (type = ON-ROAD) in Baltimore City, Maryland (fips = "24510") from 1999 to 2008')
+print(g)
 dev.off()

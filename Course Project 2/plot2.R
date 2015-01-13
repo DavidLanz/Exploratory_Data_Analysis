@@ -1,13 +1,18 @@
-# Loads RDS
-NEI <- readRDS("data/summarySCC_PM25.rds")
-SCC <- readRDS("data/Source_Classification_Code.rds")
+## This first line will likely take a few seconds. Be patient!
+if(!exists("NEI")){
+  NEI <- readRDS("./data/summarySCC_PM25.rds")
+}
+if(!exists("SCC")){
+  SCC <- readRDS("./data/Source_Classification_Code.rds")
+}
 
-# Samples data for testing
-NEIsample <- NEI[sample(nrow(NEI), size = 5000, replace = F), ]
+# Have total emissions from PM2.5 decreased in the Baltimore City, Maryland (fips == "24510") from 1999 to 2008? 
+# Use the base plotting system to make a plot answering this question.
 
-# Subsets data and appends two years in one data frame
-MD <- subset(NEI, fips == '24510')
+subsetNEI  <- NEI[NEI$fips=="24510", ]
 
-png(filename = 'plot2.png')
-barplot(tapply(X = MD$Emissions, INDEX = MD$year, FUN = sum), main = 'Total Emission in Baltimore City, MD', xlab = 'Year', ylab = expression('PM'[2.5]))
+aggregatedTotalByYear <- aggregate(Emissions ~ year, subsetNEI, sum)
+
+png('plot2.png')
+barplot(height=aggregatedTotalByYear$Emissions, names.arg=aggregatedTotalByYear$year, xlab="years", ylab=expression('total PM'[2.5]*' emission'),main=expression('Total PM'[2.5]*' in the Baltimore City, MD emissions at various years'))
 dev.off()
